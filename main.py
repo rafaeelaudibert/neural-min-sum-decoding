@@ -20,11 +20,22 @@ snr_step = float(sys.argv[4])
 min_frame_errors = int(sys.argv[5])
 max_frames = float(sys.argv[6])
 num_iterations = int(sys.argv[7])
+H_filename = sys.argv[8]
+G_filename = sys.argv[9]
+L = float(sys.argv[10])
 steps = int(sys.argv[11])
 provided_decoder_type = sys.argv[12]
 save_path = sys.argv[13]
 
-decoder = Decoder(decoder_type=provided_decoder_type, random_seed=1, relaxed=False)
+decoder = Decoder(
+    H_filename,
+    G_filename,
+    L=L,
+    num_iterations=num_iterations,
+    decoder_type=provided_decoder_type,
+    random_seed=1,
+    relaxed=False,
+)
 
 
 # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1)

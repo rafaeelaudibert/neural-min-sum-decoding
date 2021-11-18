@@ -1,5 +1,4 @@
 import numpy as np
-import sys
 from helper_functions import load_code, syndrome
 import os
 import constants
@@ -38,36 +37,41 @@ if constants.NO_SIGMA_SCALING_TEST:
 else:
     print("Scaling test input by 2/sigma")
 
-seed = int(sys.argv[1])
-np.random.seed(seed)
-
-num_iterations = int(sys.argv[7])
-H_filename = sys.argv[8]
-G_filename = sys.argv[9]
-L = float(sys.argv[10])
-
-if constants.ALL_ZEROS_CODEWORD_TESTING:
-    G_filename = ""
-code = load_code(H_filename, G_filename)
-
 
 class Decoder:
-    def __init__(self, decoder_type="RNOMS", random_seed=0, learning_rate=0.001, relaxed=False):
+    def __init__(
+        self,
+        H_filename,
+        G_filename,
+        L=1.0,
+        num_iterations=100000,
+        decoder_type="RNOMS",
+        random_seed=0,
+        learning_rate=0.001,
+        relaxed=False,
+    ):
 
         # code.H = np.array([[1, 1, 0, 1, 1, 0, 0],
         #        [1, 0, 1, 1, 0, 1, 0],
         #        [0, 1, 1, 1, 0, 0, 1]])
 
-        self.H = code.H
-        self.G = code.G
-        self.var_degrees = code.var_degrees
-        self.chk_degrees = code.chk_degrees
-        self.num_edges = code.num_edges
-        self.u = code.u
-        self.d = code.d
-        self.n = code.n
-        self.m = code.m
-        self.k = code.k
+        if constants.ALL_ZEROS_CODEWORD_TESTING:
+            G_filename = ""
+        self.code = load_code(H_filename, G_filename)
+
+        self.L = L
+        self.num_iterations = num_iterations
+
+        self.H = self.code.H
+        self.G = self.code.G
+        self.var_degrees = self.code.var_degrees
+        self.chk_degrees = self.code.chk_degrees
+        self.num_edges = self.code.num_edges
+        self.u = self.code.u
+        self.d = self.code.d
+        self.n = self.code.n
+        self.m = self.code.m
+        self.k = self.code.k
 
         self.decoder_type = decoder_type
         self.random_seed = random_seed
@@ -193,7 +197,7 @@ class Decoder:
         return soft_output
 
     def continue_condition(self, soft_input, soft_output, iteration, cv, m_t, loss, labels):
-        condition = iteration < num_iterations
+        condition = iteration < self.num_iterations
         return condition
 
     def belief_propagation_iteration(self, soft_input, soft_output, iteration, cv, m_t, loss, labels):
@@ -215,12 +219,13 @@ class Decoder:
         iteration += 1
 
         # L = 0.5
-        print("L = " + str(L))
+        print("L = " + str(self.L))
         CE_loss = (
-            tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=-soft_output, labels=labels)) / num_iterations
+            tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=-soft_output, labels=labels))
+            / self.num_iterations
         )
-        syndrome_loss = tf.reduce_mean(tf.maximum(1.0 - syndrome(soft_output, code), 0)) / num_iterations
-        new_loss = L * CE_loss + (1 - L) * syndrome_loss
+        syndrome_loss = tf.reduce_mean(tf.maximum(1.0 - syndrome(soft_output, self.code), 0)) / self.num_iterations
+        new_loss = self.L * CE_loss + (1 - self.L) * syndrome_loss
         loss = loss + new_loss
 
         return soft_input, soft_output, iteration, cv, m_t, loss, labels
@@ -255,7 +260,7 @@ class Decoder:
             if self.decoder_type == "FNSPA":
                 self.W_cv = tf.Variable(
                     tf.truncated_normal(
-                        [num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0, seed=self.random_seed
+                        [self.num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0, seed=self.random_seed
                     )
                 )
 
@@ -266,17 +271,17 @@ class Decoder:
 
         if constants.MIN_SUM:
             if self.decoder_type == "FNNMS":
-                # self.W_cv = tf.nn.softplus(tf.Variable(tf.truncated_normal([num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0, seed=self.random_seed)))
+                # self.W_cv = tf.nn.softplus(tf.Variable(tf.truncated_normal([self.num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0, seed=self.random_seed)))
                 self.W_cv = tf.Variable(
                     tf.truncated_normal(
-                        [num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0, seed=self.random_seed
+                        [self.num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0, seed=self.random_seed
                     )
                 )
 
             if self.decoder_type == "FNOMS":
                 self.B_cv = tf.Variable(
-                    tf.truncated_normal([num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0)
-                )  # tf.Variable(1.0 + tf.truncated_normal([num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0/self.num_edges))
+                    tf.truncated_normal([self.num_iterations, self.num_edges], dtype=tf.float32, stddev=1.0)
+                )  # tf.Variable(1.0 + tf.truncated_normal([self.num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0))#tf.Variable(1.0 + tf.truncated_normal([num_iterations, self.num_edges],dtype=tf.float32,stddev=1.0/self.num_edges))
 
             if self.decoder_type == "RNNMS":
                 self.W_cv = tf.nn.softplus(
