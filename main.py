@@ -1,6 +1,6 @@
 # Belief propagation using TensorFlow
 # Run as follows:
-# python3 main.py 0 1 6 1 100 10000000000000000 5 codes/BCH_63_45.alist codes/BCH_63_45.gmat 1.0 100 FNOMS
+# python3 main.py 0 1 6 1 100 10000000000000000 5 codes/BCH_63_45.alist codes/BCH_63_45.gmat 1.0 100 FNOMS "model/model"
 import numpy as np
 import sys
 from Decoder import Decoder
@@ -22,6 +22,7 @@ max_frames = float(sys.argv[6])
 num_iterations = int(sys.argv[7])
 steps = int(sys.argv[11])
 provided_decoder_type = sys.argv[12]
+save_path = sys.argv[13]
 
 decoder = Decoder(decoder_type=provided_decoder_type, random_seed=1, relaxed=False)
 
@@ -133,7 +134,7 @@ with tf.Session(config=config) as session:  # tf.Session(config=tf.ConfigProto(g
         print("Trained decoder on " + str(step) + " minibatches.\n")
     else:
         saver = tf.train.Saver()
-        saver.restore(session, constants.SAVE_PATH)
+        saver.restore(session, save_path)
 
     # testing phase
     print("***********************")
@@ -210,7 +211,7 @@ with tf.Session(config=config) as session:  # tf.Session(config=tf.ConfigProto(g
 
     if constants.TRAINING:
         saver = tf.train.Saver()
-        saved_path = saver.save(session, constants.SAVE_PATH)
+        saved_path = saver.save(session, save_path)
         print(f"Saved to {saved_path}")
 
     # offset = session.run(decoder.B_cv)
